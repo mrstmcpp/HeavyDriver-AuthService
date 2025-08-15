@@ -4,10 +4,7 @@ package org.mrstm.uberauthproject.controllers;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.mrstm.uberauthproject.dto.AuthRequestDto;
-import org.mrstm.uberauthproject.dto.AuthResponseDto;
-import org.mrstm.uberauthproject.dto.PassengerResponseDTO;
-import org.mrstm.uberauthproject.dto.PassengerSignUpRequestDTO;
+import org.mrstm.uberauthproject.dto.*;
 import org.mrstm.uberauthproject.services.AuthService;
 import org.mrstm.uberauthproject.services.JwtService;
 import org.springframework.beans.factory.annotation.Value;
@@ -69,7 +66,7 @@ public class AuthController {
 
 
     @GetMapping("/validate")
-    public ResponseEntity<?> validatePassenger(HttpServletRequest request)  {
+    public ResponseEntity<ValidUserDto> validatePassenger(HttpServletRequest request)  {
         String jwtToken = null;
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
@@ -84,9 +81,26 @@ public class AuthController {
         String username = jwtService.extractEmailFromToken(jwtToken);
 
         if (jwtService.isTokenValid(jwtToken, username)) {
-            return new ResponseEntity<>("Token is valid", HttpStatus.OK);
+            return new ResponseEntity<>(ValidUserDto.builder()
+                    .loggedIn(true)
+                    .user((username))
+                    .build(), HttpStatus.OK);
         } else {
-            return new ResponseEntity<>("Invalid token", HttpStatus.UNAUTHORIZED);
+            return new ResponseEntity<>(ValidUserDto.builder()
+                    .loggedIn(false).build(), HttpStatus.UNAUTHORIZED);
         }
     }
+
+    @PostMapping("/logout")
+    public ResponseEntity<?> logout(HttpServletResponse response) {
+        ResponseCookie cookie = ResponseCookie.from("JwtToken", "")
+                .httpOnly(true)
+                .secure(false)
+                .path("/")
+                .maxAge(0) // instantly expire
+                .build();
+        response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        return new ResponseEntity<>("Logout Successful.", HttpStatus.OK);
+    }
+
 }

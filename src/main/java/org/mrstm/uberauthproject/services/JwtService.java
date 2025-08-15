@@ -42,17 +42,23 @@ public class JwtService implements CommandLineRunner {
     }
 
     private Claims extractAllClaims(String token){
-        return Jwts
-                .parser()
-                .verifyWith(getSignInKey())
-                .build()
-                .parseSignedClaims(token)
-                .getPayload();
+        try {
+            return Jwts
+                    .parser()
+                    .verifyWith(getSignInKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            //
+            return null;
+        }
     }
 
     public <T> T extractFromToken(String token , Function<Claims , T> claimsExtractor){
         //here claimsextractor would be a function which will be passed inorder to get required data from token.
         final Claims claims = extractAllClaims(token);
+        if (claims == null) return null;
         return claimsExtractor.apply(claims);
     }
 
@@ -79,6 +85,10 @@ public class JwtService implements CommandLineRunner {
         return extractFromToken(token, Claims::getSubject);
     }
 
+    public String extractUserIdFromToken(String token){
+        return extractFromToken(token, Claims::getId);
+    }
+
     private Date getExpirationDateFromToken(String token){
         return extractFromToken(token , Claims::getExpiration);
     }
@@ -88,9 +98,21 @@ public class JwtService implements CommandLineRunner {
         return getExpirationDateFromToken(token).before(new Date());
     }
 
-    public Boolean isTokenValid(String token , String username){
-        return username.equals(extractEmailFromToken(token)) && !isTokenExpired(token);
+    public Boolean isTokenValid(String token, String username) {
+        try {
+            if (username != null && !username.isEmpty()) {
+                return username.equals(extractEmailFromToken(token)) && !isTokenExpired(token);
+            }
+            return false;
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            // Token expired
+            return false;
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
+            // unsupported or null token
+            return false;
+        }
     }
+
 
 
     @Override
