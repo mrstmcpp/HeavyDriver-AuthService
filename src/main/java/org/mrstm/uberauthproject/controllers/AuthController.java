@@ -5,6 +5,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.mrstm.uberauthproject.dto.*;
+import org.mrstm.uberauthproject.repositories.PassengerRepository;
 import org.mrstm.uberauthproject.services.AuthService;
 import org.mrstm.uberauthproject.services.JwtService;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/auth")
 public class AuthController {
 
+    private final PassengerRepository passengerRepository;
     @Value("${cookie.expiry}")
     private int cookieExpiry;
 
@@ -28,10 +30,11 @@ public class AuthController {
     private final JwtService jwtService;
     private AuthService authService;
 
-    public AuthController(AuthService authService, AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AuthController(AuthService authService, AuthenticationManager authenticationManager, JwtService jwtService, PassengerRepository passengerRepository) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.passengerRepository = passengerRepository;
     }
 
     @PostMapping("/signup/passenger")
@@ -70,7 +73,7 @@ public class AuthController {
         String jwtToken = null;
         if (request.getCookies() != null) {
             for (Cookie cookie : request.getCookies()) {
-                System.out.println(cookie.getName() + " " + cookie.getValue());
+                System.out.println("current cookie bc" + cookie.getName() + " " + cookie.getValue());
                 if ("JwtToken".equals(cookie.getName())) {
                     jwtToken = cookie.getValue();
                     break;
@@ -79,11 +82,12 @@ public class AuthController {
         }
 
         String username = jwtService.extractEmailFromToken(jwtToken);
-
+        Long userId = passengerRepository.findByEmail(username).get().getId();
         if (jwtService.isTokenValid(jwtToken, username)) {
             return new ResponseEntity<>(ValidUserDto.builder()
                     .loggedIn(true)
                     .user((username))
+                    .userId(userId)
                     .build(), HttpStatus.OK);
         } else {
             return new ResponseEntity<>(ValidUserDto.builder()

@@ -11,4 +11,5 @@ import lombok.Setter;
 public class ValidUserDto {
     private boolean loggedIn;
     private String user;
+    private Long userId;
 }

@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.function.Function;
 
 @Service
-public class JwtService implements CommandLineRunner {
+public class JwtService {
 
     @Value("${jwt.expiry}")
     private int expiry;
@@ -115,14 +115,14 @@ public class JwtService implements CommandLineRunner {
 
 
 
-    @Override
-    public void run(String... args) throws Exception {
-        Map<String , Object> payload = new HashMap<>();
-        payload.put("username", "john");
-        payload.put("password", "secret");
-        payload.put("role", "admin");
-        String token = createToken(payload , "john");
-        System.out.println(token);
-
-    }
+//    @Override
+//    public void run(String... args) throws Exception {
+//        Map<String , Object> payload = new HashMap<>();
+//        payload.put("username", "john");
+//        payload.put("password", "secret");
+//        payload.put("role", "admin");
+//        String token = createToken(payload , "john");
+//        System.out.println(token);
+//
+//    }
 }
