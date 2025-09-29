@@ -11,10 +11,11 @@ public class AuthPassengerDetails extends Passenger implements UserDetails {
 
     // Why ?
     //Bcoz spring security works on UserDetails polymorphic type for auth
-
+    private Long id;
     private String email;
     private String password;
     public AuthPassengerDetails(Passenger passenger) {
+        this.id = passenger.getId();
         this.email = passenger.getEmail();
         this.password = passenger.getPassword();
     }
@@ -39,6 +40,10 @@ public class AuthPassengerDetails extends Passenger implements UserDetails {
     @Override
     public String getPassword() {
         return this.password;
+    }
+
+    public Long getId(){
+        return this.id;
     }
 
     //currently some of the function is not needed. hence, set them to always true;

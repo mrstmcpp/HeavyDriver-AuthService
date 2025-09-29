@@ -8,6 +8,7 @@ import org.mrstm.uberauthproject.dto.*;
 import org.mrstm.uberauthproject.repositories.PassengerRepository;
 import org.mrstm.uberauthproject.services.AuthService;
 import org.mrstm.uberauthproject.services.JwtService;
+import org.mrstm.uberauthproject.services.RedisService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -29,12 +30,14 @@ public class AuthController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private AuthService authService;
+    private final RedisService redisService;
 
-    public AuthController(AuthService authService, AuthenticationManager authenticationManager, JwtService jwtService, PassengerRepository passengerRepository) {
+    public AuthController(AuthService authService, AuthenticationManager authenticationManager, JwtService jwtService, PassengerRepository passengerRepository, RedisService redisService) {
         this.authService = authService;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
         this.passengerRepository = passengerRepository;
+        this.redisService = redisService;
     }
 
     @PostMapping("/signup/passenger")
@@ -47,6 +50,7 @@ public class AuthController {
     public ResponseEntity<?> signupDriver(@RequestParam String driver) {
         return ResponseEntity.ok().build();
     }
+
 
     @PostMapping("/signin/passenger")
     public ResponseEntity<?> signIn(@RequestBody AuthRequestDto authRequestDto , HttpServletResponse response) {
@@ -69,31 +73,76 @@ public class AuthController {
 
 
     @GetMapping("/validate")
-    public ResponseEntity<ValidUserDto> validatePassenger(HttpServletRequest request)  {
-        String jwtToken = null;
-        if (request.getCookies() != null) {
-            for (Cookie cookie : request.getCookies()) {
-                System.out.println("current cookie bc" + cookie.getName() + " " + cookie.getValue());
-                if ("JwtToken".equals(cookie.getName())) {
-                    jwtToken = cookie.getValue();
-                    break;
+    public ResponseEntity<ValidUserDto> validatePassenger(HttpServletRequest request) {
+        try {
+            String jwtToken = null;
+
+            if (request.getCookies() != null) {
+                for (Cookie cookie : request.getCookies()) {
+                    if ("JwtToken".equals(cookie.getName())) {
+                        jwtToken = cookie.getValue();
+                        break;
+                    }
                 }
             }
-        }
 
-        String username = jwtService.extractEmailFromToken(jwtToken);
-        Long userId = passengerRepository.findByEmail(username).get().getId();
-        if (jwtService.isTokenValid(jwtToken, username)) {
-            return new ResponseEntity<>(ValidUserDto.builder()
-                    .loggedIn(true)
-                    .user((username))
-                    .userId(userId)
-                    .build(), HttpStatus.OK);
-        } else {
-            return new ResponseEntity<>(ValidUserDto.builder()
-                    .loggedIn(false).build(), HttpStatus.UNAUTHORIZED);
+            if (jwtToken == null || jwtToken.isBlank()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ValidUserDto.builder()
+                                .loggedIn(false)
+                                .build());
+            }
+
+            if(redisService.exists(jwtToken)){
+                return ResponseEntity.ok(
+                        ValidUserDto.builder()
+                                .loggedIn(true)
+                                .user(redisService.getValue(jwtToken).get("username"))
+                                .userId(Long.parseLong(redisService.getValue(jwtToken).get("userId")))
+                                .build()
+                );
+            }
+
+
+            String username = jwtService.extractEmailFromToken(jwtToken);
+
+
+//            String userId = jwtService.extractUserIdFromToken(jwtToken);
+            if (username == null || username.isBlank()) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ValidUserDto.builder()
+                                .loggedIn(false)
+                                .build());
+            }
+
+            Long userId = passengerRepository.findByEmail(username)
+                    .map(p -> p.getId())
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            if (jwtService.isTokenValid(jwtToken, username)) {
+                redisService.setValue(jwtToken , username , userId.toString());
+                return ResponseEntity.ok(
+                        ValidUserDto.builder()
+                                .loggedIn(true)
+                                .user(username)
+                                .userId(userId)
+                                .build()
+                );
+            } else {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                        .body(ValidUserDto.builder()
+                                .loggedIn(false)
+                                .build());
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(ValidUserDto.builder()
+                            .loggedIn(false)
+                            .build());
         }
     }
+
 
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
