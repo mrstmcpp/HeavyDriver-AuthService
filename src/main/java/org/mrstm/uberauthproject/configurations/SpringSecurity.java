@@ -2,7 +2,7 @@ package org.mrstm.uberauthproject.configurations;
 
 
 import org.mrstm.uberauthproject.filters.JwtAuthFilter;
-import org.mrstm.uberauthproject.services.UserDetailsServiceImpl;
+import org.mrstm.uberauthproject.services.PassengerDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,7 +30,7 @@ public class SpringSecurity implements WebMvcConfigurer {
 
     @Bean
     public UserDetailsService userDetailsService() {
-        return new UserDetailsServiceImpl();
+        return new PassengerDetailsServiceImpl();
     }
 
 
@@ -43,6 +43,8 @@ public class SpringSecurity implements WebMvcConfigurer {
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/api/v1/auth/signup/**").permitAll()
                         .requestMatchers("/api/v1/auth/signin/**").permitAll()
+                        .requestMatchers("/api/v1/auth/signin/driver/**").permitAll()
+                        .requestMatchers("/api/v1/auth/signup/driver/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .authenticationProvider(authenticationProvider())

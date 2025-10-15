@@ -12,7 +12,7 @@ import org.springframework.stereotype.Service;
 import java.util.Optional;
 
 @Service
-public class UserDetailsServiceImpl implements UserDetailsService {
+public class PassengerDetailsServiceImpl implements UserDetailsService {
     //class is responsible for loading the user in the form of UserDetails object for auth.
     @Autowired
     private PassengerRepository passengerRepository; //since it is not a concrete class. hence autowired can be used.
@@ -26,6 +26,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         }else{
             throw new UsernameNotFoundException("No passenger found with email: " + email);
         }
-
     }
+
 }

@@ -1,12 +1,9 @@
 package org.mrstm.uberauthproject.services;
 
-
-
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -24,24 +21,28 @@ public class JwtService {
     @Value("${jwt.secret}")
     private String secret;
 
-
-    private String createToken(Map<String , Object> payload , String username){
+    /**
+     * Create a token with payload (claims) + subject (email)
+     */
+    private String createToken(Map<String, Object> payload, String username) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiry);
+
         SecretKey key = Keys.hmacShaKeyFor(secret.getBytes());
-        return Jwts.builder().claims(payload)
-                .issuedAt(new Date(System.currentTimeMillis()))
+        return Jwts.builder()
+                .claims(payload)
+                .issuedAt(now)
                 .expiration(expiryDate)
                 .subject(username)
                 .signWith(key)
                 .compact();
     }
 
-    private SecretKey getSignInKey(){
+    private SecretKey getSignInKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    private Claims extractAllClaims(String token){
+    private Claims extractAllClaims(String token) {
         try {
             return Jwts
                     .parser()
@@ -50,52 +51,60 @@ public class JwtService {
                     .parseSignedClaims(token)
                     .getPayload();
         } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
-            //
-            return null;
+            return null; // token invalid or expired
         }
     }
 
-    public <T> T extractFromToken(String token , Function<Claims , T> claimsExtractor){
-        //here claimsextractor would be a function which will be passed inorder to get required data from token.
+    public <T> T extractFromToken(String token, Function<Claims, T> claimsExtractor) {
         final Claims claims = extractAllClaims(token);
         if (claims == null) return null;
         return claimsExtractor.apply(claims);
     }
 
+    // --- TOKEN GENERATION ---
 
-    public String generateToken(String username){
+    public String generateToken(String username) {
         return generateToken(new HashMap<>(), username);
     }
 
-    /**
-     * above function is created as it is more readable while calling this function in any component
-     * String token = jwtService.generateToken(userDetails);
-     *String token = jwtService.generateToken(new HashMap<>(), userDetails);
-     *
-     * 1st one is more clean.
-     * @param payload
-     * @param username
-     * @return
-     */
-    public String generateToken(Map<String , Object> payload , String username){
-        return createToken(payload,username);
+    public String generateToken(Map<String, Object> payload, String username) {
+        return createToken(payload, username);
     }
 
-    public String extractEmailFromToken(String token){
+    /**
+     * Overloaded version for better readability:
+     * Allows direct creation of token with email, role, and userId.
+     */
+    public String generateToken(String email, String role, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("role", role);
+        claims.put("userId", userId);
+        return createToken(claims, email);
+    }
+
+    // --- TOKEN EXTRACTION HELPERS ---
+
+    public String extractEmailFromToken(String token) {
         return extractFromToken(token, Claims::getSubject);
     }
 
-    public String extractUserIdFromToken(String token){
-        return extractFromToken(token, Claims::getId);
+    public String extractRoleFromToken(String token) {
+        return extractFromToken(token, claims -> (String) claims.get("role"));
     }
 
-    private Date getExpirationDateFromToken(String token){
-        return extractFromToken(token , Claims::getExpiration);
+    public Long extractUserIdFromToken(String token) {
+        Object userIdObj = extractFromToken(token, claims -> claims.get("userId"));
+        if (userIdObj == null) return null;
+        return Long.valueOf(userIdObj.toString());
     }
 
-    private Boolean isTokenExpired(String token){
-        //returns true if expired...
-        return getExpirationDateFromToken(token).before(new Date());
+    private Date getExpirationDateFromToken(String token) {
+        return extractFromToken(token, Claims::getExpiration);
+    }
+
+    private Boolean isTokenExpired(String token) {
+        Date expiration = getExpirationDateFromToken(token);
+        return expiration == null || expiration.before(new Date());
     }
 
     public Boolean isTokenValid(String token, String username) {
@@ -105,24 +114,9 @@ public class JwtService {
             }
             return false;
         } catch (io.jsonwebtoken.ExpiredJwtException e) {
-            // Token expired
             return false;
         } catch (io.jsonwebtoken.JwtException | IllegalArgumentException e) {
-            // unsupported or null token
             return false;
         }
     }
-
-
-
-//    @Override
-//    public void run(String... args) throws Exception {
-//        Map<String , Object> payload = new HashMap<>();
-//        payload.put("username", "john");
-//        payload.put("password", "secret");
-//        payload.put("role", "admin");
-//        String token = createToken(payload , "john");
-//        System.out.println(token);
-//
-//    }
 }
