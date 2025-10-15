@@ -4,6 +4,7 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.NotFoundException;
+import org.mrstm.uberauthproject.contexts.RoleContext;
 import org.mrstm.uberauthproject.repositories.DriverRepository;
 import org.mrstm.uberauthproject.repositories.PassengerRepository;
 import org.mrstm.uberauthproject.services.AuthService;
@@ -69,52 +70,57 @@ public class AuthController {
 
     @PostMapping("/signin")
     public ResponseEntity<?> signIn(@RequestBody AuthRequestDto authRequestDto, HttpServletResponse response) {
-        Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(authRequestDto.getEmail(), authRequestDto.getPassword())
-        );
+        try{
+            RoleContext.setRole(authRequestDto.getRole().toString().toUpperCase());
+            Authentication authentication = authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(authRequestDto.getEmail(), authRequestDto.getPassword())
+            );
 
-        if (!authentication.isAuthenticated()) {
-            return new ResponseEntity<>("Authorization unsuccessful.", HttpStatus.EXPECTATION_FAILED);
+            if (!authentication.isAuthenticated()) {
+                return new ResponseEntity<>("Authorization unsuccessful.", HttpStatus.EXPECTATION_FAILED);
+            }
+
+            String role = authRequestDto.getRole().toString().toUpperCase();
+            Long userId;
+
+            switch (role) {
+                case "DRIVER":
+                    userId = driverRepository.findByEmail(authRequestDto.getEmail())
+                            .map(BaseModel::getId)
+                            .orElseThrow(() -> new NotFoundException("Driver not found."));
+                    break;
+
+                case "PASSENGER":
+                    userId = passengerRepository.findByEmail(authRequestDto.getEmail())
+                            .map(BaseModel::getId)
+                            .orElseThrow(() -> new NotFoundException("Passenger not found."));
+                    break;
+
+                default:
+                    return ResponseEntity.badRequest().body("Invalid role provided.");
+            }
+
+            // gen JWT with role + userId
+            String jwtToken = jwtService.generateToken(authRequestDto.getEmail(), role, userId);
+
+            // Create cookie
+            ResponseCookie responseCookie = ResponseCookie.from("JwtToken", jwtToken)
+                    .httpOnly(true)
+                    .secure(false)
+                    .path("/")
+                    .maxAge(cookieExpiry)
+                    .build();
+
+            response.setHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
+
+            redisService.setValue(jwtToken, authRequestDto.getEmail(), userId.toString(), role);
+
+            return new ResponseEntity<>(AuthResponseDto.builder()
+                    .success(true)
+                    .build(), HttpStatus.OK);
+        } finally {
+            RoleContext.clear();
         }
-
-        String role = authRequestDto.getRole().toString().toUpperCase();
-        Long userId;
-
-        switch (role) {
-            case "DRIVER":
-                userId = driverRepository.findByEmail(authRequestDto.getEmail())
-                        .map(BaseModel::getId)
-                        .orElseThrow(() -> new NotFoundException("Driver not found."));
-                break;
-
-            case "PASSENGER":
-                userId = passengerRepository.findByEmail(authRequestDto.getEmail())
-                        .map(BaseModel::getId)
-                        .orElseThrow(() -> new NotFoundException("Passenger not found."));
-                break;
-
-            default:
-                return ResponseEntity.badRequest().body("Invalid role provided.");
-        }
-
-        // gen JWT with role + userId
-        String jwtToken = jwtService.generateToken(authRequestDto.getEmail(), role, userId);
-
-        // Create cookie
-        ResponseCookie responseCookie = ResponseCookie.from("JwtToken", jwtToken)
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(cookieExpiry)
-                .build();
-
-        response.setHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
-
-        redisService.setValue(jwtToken, authRequestDto.getEmail(), userId.toString(), role);
-
-        return new ResponseEntity<>(AuthResponseDto.builder()
-                .success(true)
-                .build(), HttpStatus.OK);
     }
 
     @GetMapping("/validate")

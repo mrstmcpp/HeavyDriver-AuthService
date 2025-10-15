@@ -7,6 +7,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Collection;
 import java.util.List;
 
+
 public class AuthDriverDetails extends Driver implements UserDetails {
     private Long id;
     private String email;
@@ -29,6 +30,12 @@ public class AuthDriverDetails extends Driver implements UserDetails {
 
     public Long getId(){
         return this.id;
+    }
+
+
+    @Override
+    public String getPassword() {
+        return this.password;
     }
 
     @Override

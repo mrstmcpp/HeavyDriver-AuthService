@@ -2,6 +2,7 @@ package org.mrstm.uberauthproject.configurations;
 
 
 import org.mrstm.uberauthproject.filters.JwtAuthFilter;
+import org.mrstm.uberauthproject.providers.MultiRoleAuthenticationProvider;
 import org.mrstm.uberauthproject.services.PassengerDetailsServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -25,14 +26,19 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class SpringSecurity implements WebMvcConfigurer {
     //for setting up spring security.
     //this also helps to avoid authentication for first time registration.
-    @Autowired
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthFilter jwtAuthFilter;
 
-    @Bean
-    public UserDetailsService userDetailsService() {
-        return new PassengerDetailsServiceImpl();
+    private final MultiRoleAuthenticationProvider multiRoleAuthenticationProvider;
+
+    public SpringSecurity(JwtAuthFilter jwtAuthFilter, MultiRoleAuthenticationProvider multiRoleAuthenticationProvider) {
+        this.jwtAuthFilter = jwtAuthFilter;
+        this.multiRoleAuthenticationProvider = multiRoleAuthenticationProvider;
     }
 
+//    @Bean
+//    public UserDetailsService userDetailsService() {
+//        return new PassengerDetailsServiceImpl();
+//    }
 
 
     @Bean
@@ -41,35 +47,24 @@ public class SpringSecurity implements WebMvcConfigurer {
                 .csrf(AbstractHttpConfigurer::disable) // for avoiding 403 on sending requests.
                 .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
-                        .requestMatchers("/api/v1/auth/signup/**").permitAll()
-                        .requestMatchers("/api/v1/auth/signin/**").permitAll()
-                        .requestMatchers("/api/v1/auth/signin/driver/**").permitAll()
-                        .requestMatchers("/api/v1/auth/signup/driver/**").permitAll()
+                        .requestMatchers("/signup/**").permitAll()
+                        .requestMatchers("/signin/**").permitAll()
                         .anyRequest().permitAll()
                 )
-                .authenticationProvider(authenticationProvider())
+                .authenticationProvider(multiRoleAuthenticationProvider)
                 .addFilterBefore(jwtAuthFilter , UsernamePasswordAuthenticationFilter.class)
         ;
         return http.build();
     }
 
-    @Bean //telling spring boot that it is a bean
-    // as there could 6 type of more constructors could be possible we need to define which one to use.
-    // u can check it in the BCryptPasswordEncoder package.
-    public BCryptPasswordEncoder bCryptPasswordEncoder() {
-        return new BCryptPasswordEncoder();
-    }
-
-
-
     //these below two methods are written to call spring security password matching mechanism.
-    @Bean
-    public AuthenticationProvider authenticationProvider() { //an AuthenticationProvider processes an Authentication request, and a fully authenticated object with full credentials is returned.
-        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
-        authProvider.setUserDetailsService(userDetailsService());
-        authProvider.setPasswordEncoder(bCryptPasswordEncoder());
-        return authProvider;
-    }
+//    @Bean
+//    public AuthenticationProvider authenticationProvider() { //an AuthenticationProvider processes an Authentication request, and a fully authenticated object with full credentials is returned.
+//        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
+//        authProvider.setUserDetailsService(userDetailsService());
+//        authProvider.setPasswordEncoder(bCryptPasswordEncoder());
+//        return authProvider;
+//    }
     //this function is written for calling authenticationprovider.
     @Bean
     public AuthenticationManager authManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {

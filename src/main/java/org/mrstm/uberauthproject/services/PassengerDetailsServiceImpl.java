@@ -14,8 +14,12 @@ import java.util.Optional;
 @Service
 public class PassengerDetailsServiceImpl implements UserDetailsService {
     //class is responsible for loading the user in the form of UserDetails object for auth.
-    @Autowired
-    private PassengerRepository passengerRepository; //since it is not a concrete class. hence autowired can be used.
+
+    private final PassengerRepository passengerRepository; //since it is not a concrete class. hence autowired can be used.
+
+    public PassengerDetailsServiceImpl(PassengerRepository passengerRepository) {
+        this.passengerRepository = passengerRepository;
+    }
 
 
     @Override

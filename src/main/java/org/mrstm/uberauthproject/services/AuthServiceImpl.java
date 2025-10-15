@@ -69,6 +69,7 @@ public class AuthServiceImpl implements AuthService {
                     .password(bCryptPasswordEncoder.encode(driverSignUpRequest.getPassword())) // encrypt
                     .fullName(driverSignUpRequest.getName())
                     .phoneNumber(driverSignUpRequest.getPhoneNumber())
+                    .aadharCardNumber(driverSignUpRequest.getAadharCardNumber())
                     .build();
 
             driverRepository.save(driver);

@@ -33,7 +33,7 @@ public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
 
     private final RequestMatcher requestMatcher =
-            new AntPathRequestMatcher("/api/v1/auth/validate", HttpMethod.GET.name());
+            new AntPathRequestMatcher("/validate", HttpMethod.GET.name());
 
     public JwtAuthFilter(JwtService jwtService) {
         this.jwtService = jwtService;
