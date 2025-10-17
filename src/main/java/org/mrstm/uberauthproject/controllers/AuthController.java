@@ -11,7 +11,6 @@ import org.mrstm.uberauthproject.services.AuthService;
 import org.mrstm.uberauthproject.services.JwtService;
 import org.mrstm.uberauthproject.services.RedisService;
 import org.mrstm.uberentityservice.dto.auth.*;
-import org.mrstm.uberentityservice.models.BaseModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -70,7 +69,7 @@ public class AuthController {
 
     @PostMapping("/signin")
     public ResponseEntity<?> signIn(@RequestBody AuthRequestDto authRequestDto, HttpServletResponse response) {
-        try{
+        try {
             RoleContext.setRole(authRequestDto.getRole().toString().toUpperCase());
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(authRequestDto.getEmail(), authRequestDto.getPassword())
@@ -81,24 +80,27 @@ public class AuthController {
             }
 
             String role = authRequestDto.getRole().toString().toUpperCase();
+            String name;
             Long userId;
 
             switch (role) {
-                case "DRIVER":
-                    userId = driverRepository.findByEmail(authRequestDto.getEmail())
-                            .map(BaseModel::getId)
+                case "DRIVER" -> {
+                    var driver = driverRepository.findByEmail(authRequestDto.getEmail())
                             .orElseThrow(() -> new NotFoundException("Driver not found."));
-                    break;
-
-                case "PASSENGER":
-                    userId = passengerRepository.findByEmail(authRequestDto.getEmail())
-                            .map(BaseModel::getId)
+                    userId = driver.getId();
+                    name = driver.getFullName();
+                }
+                case "PASSENGER" -> {
+                    var passenger = passengerRepository.findByEmail(authRequestDto.getEmail())
                             .orElseThrow(() -> new NotFoundException("Passenger not found."));
-                    break;
-
-                default:
+                    userId = passenger.getId();
+                    name = passenger.getPassanger_name();
+                }
+                default -> {
                     return ResponseEntity.badRequest().body("Invalid role provided.");
+                }
             }
+
 
             // gen JWT with role + userId
             String jwtToken = jwtService.generateToken(authRequestDto.getEmail(), role, userId);
@@ -106,14 +108,14 @@ public class AuthController {
             // Create cookie
             ResponseCookie responseCookie = ResponseCookie.from("JwtToken", jwtToken)
                     .httpOnly(true)
-                    .secure(false)
+                    .secure(false) // https
                     .path("/")
                     .maxAge(cookieExpiry)
                     .build();
 
             response.setHeader(HttpHeaders.SET_COOKIE, responseCookie.toString());
 
-            redisService.setValue(jwtToken, authRequestDto.getEmail(), userId.toString(), role);
+            redisService.setValue(jwtToken, authRequestDto.getEmail(), userId.toString(), role , name);
 
             return new ResponseEntity<>(AuthResponseDto.builder()
                     .success(true)
@@ -143,15 +145,21 @@ public class AuthController {
 
             if (redisService.exists(jwtToken)) {
                 Map<String, String> data = redisService.getValue(jwtToken);
+                if (data == null) {
+                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                            .body(ValidUserDto.builder().loggedIn(false).build());
+                }
+
                 return ResponseEntity.ok(
                         ValidUserDto.builder()
                                 .loggedIn(true)
                                 .user(data.get("username"))
+                                .name(data.get("name"))
                                 .userId(Long.parseLong(data.get("userId")))
+                                .role(data.get("role"))
                                 .build()
                 );
             }
-
 
             String username = jwtService.extractEmailFromToken(jwtToken);
             String role = jwtService.extractRoleFromToken(jwtToken);
@@ -163,12 +171,36 @@ public class AuthController {
             }
 
             if (jwtService.isTokenValid(jwtToken, username)) {
-                redisService.setValue(jwtToken, username, String.valueOf(userId), role);
+                String name;
+                switch (role.toUpperCase()) {
+                    case "DRIVER" -> {
+                        var driver = driverRepository.findById(userId)
+                                .orElseThrow(() -> new NotFoundException("Driver not found."));
+                        name = driver.getFullName();
+                    }
+                    case "PASSENGER" -> {
+                        var passenger = passengerRepository.findById(userId)
+                                .orElseThrow(() -> new NotFoundException("Passenger not found."));
+                        name = passenger.getPassanger_name();
+                    }
+                    default -> {
+                        return ResponseEntity.badRequest().body(
+                                ValidUserDto.builder()
+                                        .loggedIn(false)
+                                        .build()
+                        );
+                    }
+                }
+
+                redisService.setValue(jwtToken, username, String.valueOf(userId), role, name);
+
                 return ResponseEntity.ok(
                         ValidUserDto.builder()
                                 .loggedIn(true)
                                 .user(username)
+                                .name(name)
                                 .userId(userId)
+                                .role(role)
                                 .build()
                 );
             }
@@ -183,12 +215,27 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/signout")
+    public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
+        String jwtToken = null;
 
-    @PostMapping("/logout")
-    public ResponseEntity<?> logout(HttpServletResponse response) {
+        if (request.getCookies() != null) {
+            for (Cookie cookie : request.getCookies()) {
+                if ("JwtToken".equals(cookie.getName())) {
+                    jwtToken = cookie.getValue();
+                    break;
+                }
+            }
+        }
+
+        if (jwtToken != null && !jwtToken.isBlank()) {
+            redisService.delete(jwtToken);
+        }
+
         ResponseCookie cookie = ResponseCookie.from("JwtToken", "")
                 .httpOnly(true)
-                .secure(false)
+                .secure(false) //https
+                .sameSite("Lax")
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -196,4 +243,5 @@ public class AuthController {
         response.setHeader(HttpHeaders.SET_COOKIE, cookie.toString());
         return new ResponseEntity<>("Logout Successful.", HttpStatus.OK);
     }
+
 }

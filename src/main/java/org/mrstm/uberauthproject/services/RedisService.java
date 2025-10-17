@@ -41,12 +41,13 @@ public class RedisService {
         );
     }
 
-    public void setValue(String jwtToken, String username, String userId, String role) {
+    public void setValue(String jwtToken, String username, String userId, String role, String name) {
         try (Jedis jedis = jedisPool.getResource()) {
             Map<String, String> data = new HashMap<>();
             data.put("username", username);
             data.put("userId", userId);
             data.put("role", role);
+            data.put("name" , name);
             String json = objectMapper.writeValueAsString(data);
             jedis.set(jwtToken, json);
             jedis.expire(jwtToken, seconds / 1000);
@@ -55,8 +56,8 @@ public class RedisService {
         }
     }
 
-    public void setValue(String jwtToken, String username, String userId) {
-        setValue(jwtToken, username, userId, "UNKNOWN");
+    public void setValue(String jwtToken, String username, String userId , String name) {
+        setValue(jwtToken, username, userId, name);
     }
 
     public Map<String, String> getValue(String jwtToken) {

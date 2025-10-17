@@ -49,6 +49,8 @@ public class SpringSecurity implements WebMvcConfigurer {
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/signup/**").permitAll()
                         .requestMatchers("/signin/**").permitAll()
+                        .requestMatchers("/validate/**").permitAll()
+                        .requestMatchers("/logout/**").permitAll()
                         .anyRequest().permitAll()
                 )
                 .authenticationProvider(multiRoleAuthenticationProvider)
@@ -76,8 +78,9 @@ public class SpringSecurity implements WebMvcConfigurer {
         registry.addMapping("/**")
                 .allowCredentials(true)
                 .allowedOriginPatterns("*")
-                .allowedOrigins("http://localhost:5173")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
+                .allowedOrigins("http://localhost:5173/")
+                .allowedOrigins("http://localhost:3006/")
+                .allowedMethods("GET", "POST", "PUT", "DELETE");
     }
 
 }
