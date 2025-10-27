@@ -78,7 +78,7 @@ public class SpringSecurity implements WebMvcConfigurer {
         registry.addMapping("/**")
                 .allowCredentials(true)
                 .allowedOriginPatterns("*")
-                .allowedOrigins("http://localhost:5173/")
+                .allowedOrigins("http://localhost:6969/" , "http://localhost:6970/")
                 .allowedOrigins("http://localhost:3006/")
                 .allowedMethods("GET", "POST", "PUT", "DELETE");
     }

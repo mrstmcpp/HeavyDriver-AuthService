@@ -127,93 +127,13 @@ public class AuthController {
 
     @GetMapping("/validate")
     public ResponseEntity<ValidUserDto> validateUser(HttpServletRequest request) {
-        try {
-            String jwtToken = null;
-            if (request.getCookies() != null) {
-                for (Cookie cookie : request.getCookies()) {
-                    if ("JwtToken".equals(cookie.getName())) {
-                        jwtToken = cookie.getValue();
-                        break;
-                    }
-                }
-            }
-
-            if (jwtToken == null || jwtToken.isBlank()) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ValidUserDto.builder().loggedIn(false).build());
-            }
-
-            if (redisService.exists(jwtToken)) {
-                Map<String, String> data = redisService.getValue(jwtToken);
-                if (data == null) {
-                    return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                            .body(ValidUserDto.builder().loggedIn(false).build());
-                }
-
-                return ResponseEntity.ok(
-                        ValidUserDto.builder()
-                                .loggedIn(true)
-                                .user(data.get("username"))
-                                .name(data.get("name"))
-                                .userId(Long.parseLong(data.get("userId")))
-                                .role(data.get("role"))
-                                .build()
-                );
-            }
-
-            String username = jwtService.extractEmailFromToken(jwtToken);
-            String role = jwtService.extractRoleFromToken(jwtToken);
-            Long userId = jwtService.extractUserIdFromToken(jwtToken);
-
-            if (username == null || role == null || userId == null) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                        .body(ValidUserDto.builder().loggedIn(false).build());
-            }
-
-            if (jwtService.isTokenValid(jwtToken, username)) {
-                String name;
-                switch (role.toUpperCase()) {
-                    case "DRIVER" -> {
-                        var driver = driverRepository.findById(userId)
-                                .orElseThrow(() -> new NotFoundException("Driver not found."));
-                        name = driver.getFullName();
-                    }
-                    case "PASSENGER" -> {
-                        var passenger = passengerRepository.findById(userId)
-                                .orElseThrow(() -> new NotFoundException("Passenger not found."));
-                        name = passenger.getPassanger_name();
-                    }
-                    default -> {
-                        return ResponseEntity.badRequest().body(
-                                ValidUserDto.builder()
-                                        .loggedIn(false)
-                                        .build()
-                        );
-                    }
-                }
-
-                redisService.setValue(jwtToken, username, String.valueOf(userId), role, name);
-
-                return ResponseEntity.ok(
-                        ValidUserDto.builder()
-                                .loggedIn(true)
-                                .user(username)
-                                .name(name)
-                                .userId(userId)
-                                .role(role)
-                                .build()
-                );
-            }
-
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(ValidUserDto.builder().loggedIn(false).build());
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(ValidUserDto.builder().loggedIn(false).build());
+        ValidUserDto result = authService.validateAndGetUser(request);
+        if (!result.isLoggedIn()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(result);
         }
+        return ResponseEntity.ok(result);
     }
+
 
     @PostMapping("/signout")
     public ResponseEntity<?> logout(HttpServletRequest request, HttpServletResponse response) {
