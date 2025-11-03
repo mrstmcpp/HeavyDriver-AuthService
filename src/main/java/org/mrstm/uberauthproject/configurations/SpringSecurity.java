@@ -23,7 +23,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @EnableWebSecurity
-public class SpringSecurity implements WebMvcConfigurer {
+public class SpringSecurity {
     //for setting up spring security.
     //this also helps to avoid authentication for first time registration.
     private final JwtAuthFilter jwtAuthFilter;
@@ -44,7 +44,7 @@ public class SpringSecurity implements WebMvcConfigurer {
     @Bean
     public SecurityFilterChain configure(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable) // for avoiding 403 on sending requests.
+                .csrf(AbstractHttpConfigurer::disable)
                 .cors(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(authorizeRequests -> authorizeRequests
                         .requestMatchers("/signup/**").permitAll()
@@ -73,14 +73,6 @@ public class SpringSecurity implements WebMvcConfigurer {
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**")
-                .allowCredentials(true)
-                .allowedOriginPatterns("*")
-                .allowedOrigins("http://localhost:6969/" , "http://localhost:6970/")
-                .allowedOrigins("http://localhost:3006/")
-                .allowedMethods("GET", "POST", "PUT", "DELETE");
-    }
+
 
 }
