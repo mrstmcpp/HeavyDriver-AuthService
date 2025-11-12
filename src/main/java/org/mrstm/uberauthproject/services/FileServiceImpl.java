@@ -5,14 +5,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.internal.resource.S3ObjectResource;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import software.amazon.awssdk.services.s3.model.ObjectCannedACL;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -32,17 +29,19 @@ public class FileServiceImpl implements FileService{
 
     @Override
     public String generateGetPresignedUrl(String filePath) {
-        GetObjectRequest objectRequest = GetObjectRequest.builder()
-                .bucket(bucketName)
-                .key(filePath)
-                .build();
+//        GetObjectRequest objectRequest = GetObjectRequest.builder()
+//                .bucket(bucketName)
+//                .key(filePath)
+//                .build();
+//
+//        GetObjectPresignRequest objectPresignRequest = GetObjectPresignRequest.builder()
+//                .signatureDuration(Duration.ofMinutes(60))
+//                .getObjectRequest(objectRequest)
+//                .build();
+//        PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner.presignGetObject(objectPresignRequest);
+//        return presignedGetObjectRequest.url().toString();
 
-        GetObjectPresignRequest objectPresignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofMinutes(60))
-                .getObjectRequest(objectRequest)
-                .build();
-        PresignedGetObjectRequest presignedGetObjectRequest = s3Presigner.presignGetObject(objectPresignRequest);
-        return presignedGetObjectRequest.url().toString();
+        return "Not in use";
     }
 
     @Override
