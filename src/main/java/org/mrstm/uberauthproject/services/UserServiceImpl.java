@@ -118,8 +118,10 @@ public class UserServiceImpl implements UserService {
         DriverDocument document = existingDoc.orElseGet(DriverDocument::new);
         document.setDocumentType(addDocumentDto.getDocumentType());
         document.setDocumentUrl(addDocumentDto.getFileUrl());
+        document.setFileName(addDocumentDto.getFileName());
         document.setVerificationStatus(VerificationStatus.PENDING);
         document.setDriverVerification(verificationRef);
+
 
         driverDocumentRepository.save(document);
         return AddDocumentResponseDto.builder()

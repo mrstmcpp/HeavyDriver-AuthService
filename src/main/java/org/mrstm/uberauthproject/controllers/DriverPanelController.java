@@ -13,7 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/driver")
+@RequestMapping("")
 public class DriverPanelController {
     private final UserService userService;
 
@@ -27,7 +27,7 @@ public class DriverPanelController {
         return ResponseEntity.ok(details);
     }
 
-    @GetMapping("/documents/verification")
+    @GetMapping("/driver/documents/verification")
     public ResponseEntity<DriverDocumentResponseDto> getDocumentDetails(@RequestHeader("X-User-Id") String driverId,
                                                                         @RequestHeader("X-User-Role") String role){
 //        System.out.println("driver id and role: " + driverId + role);

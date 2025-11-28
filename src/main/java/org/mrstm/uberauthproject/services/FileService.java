@@ -8,5 +8,6 @@ import org.springframework.stereotype.Service;
 public interface FileService {
     String generateGetPresignedUrl(String filePath);
     String generatePutPresignedUrl(String filePath, FileAccessType fileAccessType);
-    S3InputStreamWrapper downloadFile(String fileName);
+    S3InputStreamWrapper downloadFile(String fileName); // curenntly not working
+    String generatePresignedGetUrl(String filename);
 }

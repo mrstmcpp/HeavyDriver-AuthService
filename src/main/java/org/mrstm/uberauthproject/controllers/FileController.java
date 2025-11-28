@@ -22,7 +22,7 @@ public class FileController {
         return ResponseEntity.ok(url);
     }
 
-    @PostMapping("/pre-signed-url")
+    @GetMapping("/pre-signed-url")
     public ResponseEntity<Map<String, Object>> generateUrl(@RequestParam(name = "filename" , required = false, defaultValue = "") String filename,
                                                            @RequestParam(name = "fileAccessType" , required = false , defaultValue = "PRIVATE") FileAccessType fileAccessType
                                                            ){
@@ -30,9 +30,9 @@ public class FileController {
         return ResponseEntity.ok(Map.of("url" , url, "file" , filename));
     }
 
-    @GetMapping("/download/{fileName}")
-    public ResponseEntity<S3InputStreamWrapper> downloadFile(@PathVariable("fileName") String fileName) throws Exception {
-        return new ResponseEntity<>(fileService.downloadFile(fileName) , HttpStatus.OK);
+    @GetMapping("/download")
+    public ResponseEntity<String> downloadFile(@RequestParam(name = "filename" , required = false) String filename) throws Exception {
+        return new ResponseEntity<>(fileService.generatePresignedGetUrl(filename) , HttpStatus.OK);
     }
 
 }
